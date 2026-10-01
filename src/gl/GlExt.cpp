@@ -113,6 +113,15 @@ GLuint makeR32fTexture(int width, int height) {
   return texture;
 }
 
+GLuint makeRg32fTexture(int width, int height) {
+  GLuint texture = 0;
+  glGenTextures(1, &texture);
+  applySampler(texture);
+  std::vector<float> zeros(static_cast<size_t>(width) * static_cast<size_t>(height) * 2, 0.f);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, width, height, 0, GL_RG, GL_FLOAT, zeros.data());
+  return texture;
+}
+
 GLuint makeColorTexture(int width, int height, bool halfFloat) {
   GLuint texture = 0;
   glGenTextures(1, &texture);

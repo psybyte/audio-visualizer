@@ -96,15 +96,25 @@ void drawControls(UiState& state, const UiActions& actions) {
   }
 
   ImGui::Separator();
-  const int mode = std::clamp(state.mode, 0, kModeCount - 1);
-  if (ImGui::BeginCombo("Mode", kModeNames[mode])) {
-    for (int i = 0; i < kModeCount; ++i) {
+  const int modeCount = static_cast<int>(state.modeNames.size());
+  const int mode = modeCount == 0 ? 0 : std::clamp(state.mode, 0, modeCount - 1);
+  const char* modeLabel = modeCount == 0 ? "None" : state.modeNames[static_cast<size_t>(mode)].c_str();
+  ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 86.f);
+  if (ImGui::BeginCombo("##mode", modeLabel)) {
+    for (int i = 0; i < modeCount; ++i) {
       const bool selected = i == mode;
-      if (ImGui::Selectable(kModeNames[i], selected)) {
+      if (ImGui::Selectable(state.modeNames[static_cast<size_t>(i)].c_str(), selected)) {
         state.mode = i;
       }
     }
     ImGui::EndCombo();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Refresh")) {
+    actions.refreshVisualizations();
+  }
+  if (!state.visualizationNote.empty()) {
+    ImGui::TextWrapped("%s", state.visualizationNote.c_str());
   }
   ImGui::SliderFloat("Sensitivity", &state.sensitivity, 0.25f, 3.f, "%.2f");
   ImGui::SliderFloat("Smoothing", &state.smoothing, 0.f, 1.f, "%.2f");
@@ -125,7 +135,7 @@ void drawControls(UiState& state, const UiActions& actions) {
     ImGui::TextWrapped("%s", state.error.c_str());
     ImGui::PopStyleColor();
   }
-  ImGui::TextDisabled("1-8 modes    Space play/pause    F11 fullscreen");
+  ImGui::TextDisabled("1-9, 0 and Left/Right change mode    Space play/pause    F11 fullscreen");
   ImGui::TextDisabled("If you hide this panel, press Tab to open it again.");
   if (ImGui::Button("Hide panel")) {
     state.showPanel = false;

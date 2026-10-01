@@ -15,6 +15,7 @@ class Shader {
   ~Shader();
 
   static Shader fromFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath);
+  static Shader fromSources(const std::string& vertexSource, const std::string& fragmentSource, const std::string& label);
 
   void use() const;
   void set1i(const char* name, int value) const;

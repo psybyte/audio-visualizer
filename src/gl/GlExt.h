@@ -45,6 +45,12 @@
 #ifndef GL_TEXTURE0
 #define GL_TEXTURE0 0x84C0
 #endif
+#ifndef GL_TEXTURE1
+#define GL_TEXTURE1 0x84C1
+#endif
+#ifndef GL_TEXTURE2
+#define GL_TEXTURE2 0x84C2
+#endif
 #ifndef GL_RGBA8
 #define GL_RGBA8 0x8058
 #endif
@@ -53,6 +59,12 @@
 #endif
 #ifndef GL_R32F
 #define GL_R32F 0x822E
+#endif
+#ifndef GL_RG
+#define GL_RG 0x8227
+#endif
+#ifndef GL_RG32F
+#define GL_RG32F 0x8230
 #endif
 #ifndef GL_FRAMEBUFFER
 #define GL_FRAMEBUFFER 0x8D40
@@ -107,5 +119,6 @@ extern void(APIENTRY* glDeleteFramebuffers)(GLsizei, const GLuint*);
 void initGlExtensions();
 
 GLuint makeR32fTexture(int width, int height);
+GLuint makeRg32fTexture(int width, int height);
 GLuint makeColorTexture(int width, int height, bool halfFloat);
 void destroyTexture(GLuint texture);

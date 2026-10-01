@@ -9,6 +9,7 @@
 #include "viz/Mode.h"
 #include "viz/Palette.h"
 #include "viz/Trail.h"
+#include "viz/VisualizationSet.h"
 #include "WinText.h"
 
 #include <GLFW/glfw3.h>
@@ -57,7 +58,7 @@ struct Options {
   bool gallery = false;
   bool help = false;
   bool checkTransport = false;
-  AudioSource source = AudioSource::Tone;
+  AudioSource source = AudioSource::System;
   bool sourceChosen = false;
   std::wstring file;
   std::wstring galleryDir;
@@ -105,21 +106,6 @@ std::filesystem::path executableDirectory() {
     return std::filesystem::current_path();
   }
   return std::filesystem::path(buffer).parent_path();
-}
-
-std::filesystem::path findShaders() {
-  const std::filesystem::path candidates[] = {
-      executableDirectory() / "shaders",
-      executableDirectory() / ".." / "shaders",
-      executableDirectory() / ".." / ".." / "shaders",
-      std::filesystem::current_path() / "shaders",
-  };
-  for (const auto& candidate : candidates) {
-    if (std::filesystem::exists(candidate / "basic.vert")) {
-      return candidate;
-    }
-  }
-  throw std::runtime_error("Could not find the shaders next to the executable.");
 }
 
 void printUsage() {
@@ -310,20 +296,22 @@ struct Scene {
   Batch batch;
   ScreenQuad quad;
   std::unique_ptr<Trail> trail;
-  std::vector<std::unique_ptr<Mode>> modes;
+  VisualizationSet visuals;
 
-  explicit Scene(const std::filesystem::path& shaders)
-      : basic(Shader::fromFiles(shaders / "basic.vert", shaders / "basic.frag")),
-        fade(Shader::fromFiles(shaders / "screen.vert", shaders / "trail.frag")),
-        blit(Shader::fromFiles(shaders / "screen.vert", shaders / "blit.frag")),
-        spectrogram(Shader::fromFiles(shaders / "screen.vert", shaders / "spectrogram.frag")),
-        terrain(Shader::fromFiles(shaders / "terrain.vert", shaders / "terrain.frag")),
-        particle(Shader::fromFiles(shaders / "particle.vert", shaders / "particle.frag")),
-        kaleidoscope(Shader::fromFiles(shaders / "screen.vert", shaders / "kaleidoscope.frag")),
+  Scene()
+      : basic(Shader::fromFiles(executableDirectory() / "shaders" / "basic.vert", executableDirectory() / "shaders" / "basic.frag")),
+        fade(Shader::fromFiles(executableDirectory() / "shaders" / "screen.vert", executableDirectory() / "shaders" / "trail.frag")),
+        blit(Shader::fromFiles(executableDirectory() / "shaders" / "screen.vert", executableDirectory() / "shaders" / "blit.frag")),
+        spectrogram(Shader::fromFiles(executableDirectory() / "shaders" / "screen.vert", executableDirectory() / "shaders" / "spectrogram.frag")),
+        terrain(Shader::fromFiles(executableDirectory() / "shaders" / "terrain.vert", executableDirectory() / "shaders" / "terrain.frag")),
+        particle(Shader::fromFiles(executableDirectory() / "shaders" / "particle.vert", executableDirectory() / "shaders" / "particle.frag")),
+        kaleidoscope(Shader::fromFiles(executableDirectory() / "shaders" / "screen.vert", executableDirectory() / "shaders" / "kaleidoscope.frag")),
         batch(),
         quad(),
-        trail(std::make_unique<Trail>(fade, blit)),
-        modes(createAllModes()) {}
+        trail(std::make_unique<Trail>(fade, blit)) {
+    const auto root = executableDirectory();
+    visuals.load(root / "visualizations", root / "shaders");
+  }
 };
 
 VizContext makeContext(Scene& scene, const AnalysisSnapshot& audio, const UiState& ui, int width, int height, float time, float dt) {
@@ -353,8 +341,21 @@ void drawScene(Scene& scene, const VizContext& context, int mode) {
   glDisable(GL_BLEND);
   glClearColor(background.r, background.g, background.b, 1.f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  const int index = std::clamp(mode, 0, kModeCount - 1);
-  scene.modes[static_cast<size_t>(index)]->draw(context);
+  scene.visuals.draw(mode, context);
+}
+
+void fillModeList(UiState& ui, const VisualizationSet& visuals) {
+  ui.modeNames.clear();
+  ui.modeNames.reserve(static_cast<size_t>(visuals.count()));
+  for (int i = 0; i < visuals.count(); ++i) {
+    ui.modeNames.push_back(visuals.name(i));
+  }
+  ui.visualizationNote = visuals.status();
+  if (visuals.count() == 0) {
+    ui.mode = 0;
+  } else if (ui.mode >= visuals.count()) {
+    ui.mode = visuals.count() - 1;
+  }
 }
 
 int runGallery(GLFWwindow* window, AudioEngine& audio, Scene& scene, const std::filesystem::path& directory) {
@@ -368,18 +369,24 @@ int runGallery(GLFWwindow* window, AudioEngine& audio, Scene& scene, const std::
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
-  const char* names[] = {
-      "01-bars.bmp", "02-ring.bmp", "03-oscilloscope.bmp", "04-spectrogram.bmp",
-      "05-terrain.bmp", "06-particles.bmp", "07-lissajous.bmp", "08-kaleidoscope.bmp",
-  };
+  const int modeCount = scene.visuals.count();
+  std::vector<std::string> names;
+  names.reserve(static_cast<size_t>(modeCount));
+  for (int mode = 0; mode < modeCount; ++mode) {
+    std::string file = mode < 9 ? "0" : "";
+    file += std::to_string(mode + 1);
+    file += "-";
+    for (char letter : scene.visuals.name(mode)) {
+      const unsigned char character = static_cast<unsigned char>(letter);
+      file.push_back(static_cast<char>(character >= 'A' && character <= 'Z' ? character - 'A' + 'a' : character));
+    }
+    file += ".bmp";
+    names.push_back(std::move(file));
+  }
   int failures = 0;
   VisualSettings settings;
   settings.smoothing = 0.35f;
-  for (int mode = 0; mode < kModeCount; ++mode) {
-    scene.trail->clear();
-    for (auto& visual : scene.modes) {
-      visual->reset();
-    }
+  for (int mode = 0; mode < modeCount; ++mode) {
     analyzer.reset();
     int width = 0;
     int height = 0;
@@ -397,9 +404,9 @@ int runGallery(GLFWwindow* window, AudioEngine& audio, Scene& scene, const std::
       audio.readLatest(samples.data(), AnalysisSnapshot::kFftSize);
       analyzer.process(samples.data(), audio.sampleRate(), 1.f / 60.f, settings, snapshot);
       ui.palette = Palette::Neon;
-      const VizContext context = makeContext(scene, snapshot, ui, width, height, frame / 60.f, 1.f / 60.f);
       while (glGetError() != GL_NO_ERROR) {
       }
+      const VizContext context = makeContext(scene, snapshot, ui, width, height, frame / 60.f, 1.f / 60.f);
       drawScene(scene, context, mode);
       const GLenum frameError = glGetError();
       if (frameError != GL_NO_ERROR) {
@@ -411,7 +418,7 @@ int runGallery(GLFWwindow* window, AudioEngine& audio, Scene& scene, const std::
       }
       glfwSwapBuffers(window);
     }
-    std::cout << names[mode] << " media " << mean;
+    std::cout << names[mode] << " mean " << mean;
     if (error != GL_NO_ERROR) {
       std::cout << "  GL " << error;
     }
@@ -472,6 +479,14 @@ int runInteractive(GLFWwindow* window, AudioEngine& audio, Scene& scene) {
   actions.browse = browse;
   actions.setPlaying = [&](bool playing) { audio.setFilePlaying(playing); };
   actions.seek = [&](float seconds) { audio.seekFileSeconds(seconds); };
+  actions.refreshVisualizations = [&]() {
+    const std::string keep = scene.visuals.filename(ui.mode);
+    const auto root = executableDirectory();
+    scene.visuals.load(root / "visualizations", root / "shaders");
+    const int found = scene.visuals.indexOfFilename(keep);
+    ui.mode = found >= 0 ? found : 0;
+    fillModeList(ui, scene.visuals);
+  };
   actions.refreshCaptureDevices = [&]() {
     audio.refreshCaptureDevices();
     ui.captureDevices = audio.captureDeviceNames();
@@ -518,11 +533,22 @@ int runInteractive(GLFWwindow* window, AudioEngine& audio, Scene& scene) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
       }
     }
-    if (!captureKeys) {
-      for (int i = 0; i < kModeCount; ++i) {
+    const int modeCount = scene.visuals.count();
+    if (!captureKeys && modeCount > 0) {
+      const int numberKeys = std::min(modeCount, 9);
+      for (int i = 0; i < numberKeys; ++i) {
         if (keyPressed(window, GLFW_KEY_1 + i)) {
           ui.mode = i;
         }
+      }
+      if (modeCount > 9 && keyPressed(window, GLFW_KEY_0)) {
+        ui.mode = 9;
+      }
+      if (keyPressed(window, GLFW_KEY_LEFT) || keyPressed(window, GLFW_KEY_LEFT_BRACKET)) {
+        ui.mode = (ui.mode + modeCount - 1) % modeCount;
+      }
+      if (keyPressed(window, GLFW_KEY_RIGHT) || keyPressed(window, GLFW_KEY_RIGHT_BRACKET)) {
+        ui.mode = (ui.mode + 1) % modeCount;
       }
       if (audio.source() == AudioSource::File && keyPressed(window, GLFW_KEY_SPACE)) {
         audio.setFilePlaying(!audio.filePlaying());
@@ -535,6 +561,7 @@ int runInteractive(GLFWwindow* window, AudioEngine& audio, Scene& scene) {
     ui.filePosition = static_cast<float>(audio.filePositionSeconds());
     ui.fileDuration = static_cast<float>(audio.fileDurationSeconds());
     ui.fileName = fileLabel(audio.filePath());
+    fillModeList(ui, scene.visuals);
     ui.captureDevices = audio.captureDeviceNames();
     ui.captureDeviceIndex = audio.captureDeviceIndex();
     ui.captureDeviceName = audio.captureDeviceName();
@@ -546,9 +573,7 @@ int runInteractive(GLFWwindow* window, AudioEngine& audio, Scene& scene) {
     if (audio.session() != seenSession) {
       analyzer.reset();
       scene.trail->clear();
-      for (auto& mode : scene.modes) {
-        mode->reset();
-      }
+      scene.visuals.resetAll();
       seenSession = audio.session();
     }
 
@@ -618,7 +643,7 @@ int runWindow(const Options& options) {
 
   int code = 0;
   {
-    Scene scene(findShaders());
+    Scene scene;
     if (options.gallery) {
       std::filesystem::create_directories(options.galleryDir);
       code = runGallery(window, audio, scene, options.galleryDir);

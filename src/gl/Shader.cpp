@@ -73,11 +73,9 @@ Shader::~Shader() {
   }
 }
 
-Shader Shader::fromFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath) {
-  const std::string vertex = preprocess(vertexPath, 0);
-  const std::string fragment = preprocess(fragmentPath, 0);
-  const GLuint vs = compileStage(GL_VERTEX_SHADER, vertex, vertexPath.filename().string());
-  const GLuint fs = compileStage(GL_FRAGMENT_SHADER, fragment, fragmentPath.filename().string());
+Shader Shader::fromSources(const std::string& vertexSource, const std::string& fragmentSource, const std::string& label) {
+  const GLuint vs = compileStage(GL_VERTEX_SHADER, vertexSource, label);
+  const GLuint fs = compileStage(GL_FRAGMENT_SHADER, fragmentSource, label);
   const GLuint program = glCreateProgram();
   glAttachShader(program, vs);
   glAttachShader(program, fs);
@@ -92,9 +90,13 @@ Shader Shader::fromFiles(const std::filesystem::path& vertexPath, const std::fil
     std::string log(static_cast<size_t>(length > 1 ? length : 1), '\0');
     glGetProgramInfoLog(program, length, nullptr, log.data());
     glDeleteProgram(program);
-    throw std::runtime_error("Failed to link shaders:\n" + log);
+    throw std::runtime_error("Failed to link " + label + ":\n" + log);
   }
   return Shader(program);
+}
+
+Shader Shader::fromFiles(const std::filesystem::path& vertexPath, const std::filesystem::path& fragmentPath) {
+  return fromSources(preprocess(vertexPath, 0), preprocess(fragmentPath, 0), vertexPath.filename().string());
 }
 
 void Shader::use() const {

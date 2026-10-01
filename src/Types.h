@@ -26,8 +26,6 @@ inline constexpr const char* kModeNames[] = {
     "Kaleidoscope",
 };
 
-inline constexpr int kModeCount = 8;
-
 inline constexpr const char* kPaletteNames[] = {
     "Neon",
     "Phosphor",

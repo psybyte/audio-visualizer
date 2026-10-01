@@ -4,6 +4,7 @@
 #include "Types.h"
 
 #include <memory>
+#include <string>
 #include <vector>
 
 class Batch;
@@ -44,17 +45,10 @@ std::unique_ptr<Mode> createTerrain();
 std::unique_ptr<Mode> createParticles();
 std::unique_ptr<Mode> createLissajous();
 std::unique_ptr<Mode> createKaleidoscope();
-
-inline std::vector<std::unique_ptr<Mode>> createAllModes() {
-  std::vector<std::unique_ptr<Mode>> modes;
-  modes.reserve(kModeCount);
-  modes.push_back(createSpectrumBars());
-  modes.push_back(createRadialRing());
-  modes.push_back(createOscilloscope());
-  modes.push_back(createSpectrogram());
-  modes.push_back(createTerrain());
-  modes.push_back(createParticles());
-  modes.push_back(createLissajous());
-  modes.push_back(createKaleidoscope());
-  return modes;
-}
+std::unique_ptr<Mode> createNebula();
+std::unique_ptr<Mode> createSkyline();
+std::unique_ptr<Mode> createRadar();
+std::unique_ptr<Mode> createRipples();
+std::unique_ptr<Mode> createStereoField();
+std::unique_ptr<Mode> createHelix();
+std::unique_ptr<Mode> createBuiltinVisualization(const std::string& id);

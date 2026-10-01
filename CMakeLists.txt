@@ -85,6 +85,7 @@ add_executable(audio-visualizer
   src/analysis/Analyzer.cpp
   src/viz/Palette.cpp
   src/viz/Trail.cpp
+  src/viz/BuiltinModes.cpp
   src/viz/SpectrumBars.cpp
   src/viz/RadialRing.cpp
   src/viz/Oscilloscope.cpp
@@ -93,6 +94,13 @@ add_executable(audio-visualizer
   src/viz/Particles.cpp
   src/viz/Lissajous.cpp
   src/viz/Kaleidoscope.cpp
+  src/viz/Nebula.cpp
+  src/viz/Skyline.cpp
+  src/viz/Radar.cpp
+  src/viz/Ripples.cpp
+  src/viz/StereoField.cpp
+  src/viz/Helix.cpp
+  src/viz/VisualizationSet.cpp
   src/ui/Controls.cpp
   src/ui/FileDialog.cpp
 )
@@ -112,5 +120,8 @@ add_custom_command(TARGET audio-visualizer POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
           ${CMAKE_SOURCE_DIR}/shaders
           $<TARGET_FILE_DIR:audio-visualizer>/shaders
-  COMMENT "Copy shaders next to the executable"
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+          ${CMAKE_SOURCE_DIR}/visualizations
+          $<TARGET_FILE_DIR:audio-visualizer>/visualizations
+  COMMENT "Copy shaders and visualizations next to the executable"
 )

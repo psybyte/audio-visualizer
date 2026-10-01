@@ -22,7 +22,7 @@ The executable is `build\Release\audio-visualizer.exe`.
 
 ## Use
 
-The app starts with a test tone so the modes are visible without a microphone or music. The panel selects the source:
+The app starts by visualizing whatever is playing on the PC. The panel selects the source:
 
 - **System**: whatever is playing on the PC (the default playback device)
 - **Microphone**: a chosen input device
@@ -31,7 +31,10 @@ The app starts with a test tone so the modes are visible without a microphone or
 
 Keys:
 
-- `1` through `8`: mode
+- `1` through `9`, then `0`: the first ten modes in the folder
+- Left and Right arrows: cycle every mode
+
+Visualizations are files in the `visualizations` folder next to the executable. A `.viz` file turns a built-in renderer on or off. A `.frag` file adds a custom shader. Copy or delete a file, then press Refresh beside the mode list. See `visualizations/_README.txt`.
 - `Space`: play or pause a file
 - `Tab`: show or hide the panel
 - `F11`: fullscreen
